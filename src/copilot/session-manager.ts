@@ -1,6 +1,6 @@
 import { CopilotClient, CopilotSession, approveAll } from '@github/copilot-sdk';
-import { createLogger } from '../logger';
-import { ModelPreferenceStore } from './models';
+import { createLogger } from '../logger.js';
+import { ModelPreferenceStore } from './models.js';
 
 const logger = createLogger('SessionManager');
 

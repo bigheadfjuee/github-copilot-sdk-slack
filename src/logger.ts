@@ -1,8 +1,8 @@
-import pino from 'pino';
+import { pino, type Logger } from 'pino';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-export const logger = pino(
+export const logger: Logger = pino(
   {
     level: process.env.LOG_LEVEL || 'debug',
     transport: isDevelopment
@@ -20,6 +20,6 @@ export const logger = pino(
   pino.destination()
 );
 
-export const createLogger = (name: string) => {
+export const createLogger = (name: string): Logger => {
   return logger.child({ module: name });
 };

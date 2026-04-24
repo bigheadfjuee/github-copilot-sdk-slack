@@ -1,10 +1,11 @@
 import { WebClient } from '@slack/web-api';
 import { SocketModeClient } from '@slack/socket-mode';
-import { createLogger } from './logger';
-import { SessionManager } from './copilot/session-manager';
-import { TypingIndicator } from './slack/typing-indicator';
-import { ReactionManager } from './slack/reaction-manager';
-import { ModelPreferenceStore, MODEL_ALIASES, resolveModel } from './copilot/models';
+import { createLogger } from './logger.js';
+import { SessionManager } from './copilot/session-manager.js';
+import { TypingIndicator } from './slack/typing-indicator.js';
+import { ReactionManager } from './slack/reaction-manager.js';
+import { ModelPreferenceStore, MODEL_ALIASES, resolveModel } from './copilot/models.js';
+import { OpencodeBridge } from './opencode/bridge.js';
 
 const logger = createLogger('BotHandlers');
 
@@ -21,6 +22,7 @@ export const registerMessageHandlers = (
   sessionManager: SessionManager | null = null,
   copilotTimeoutMs: number = DEFAULT_COPILOT_TIMEOUT_MS,
   copilotTypingIntervalMs: number = 2000,
+  opencodeBridge?: OpencodeBridge,
 ): void => {
   socketClient.on('message', async ({ event, ack }: any) => {
     try {
@@ -33,6 +35,27 @@ export const registerMessageHandlers = (
       if (!event.text || !event.text.trim()) return;
 
       logger.info({ userId: event.user, channel: event.channel }, 'Received message');
+
+      // opencode 路由優先：若使用者有綁定的 opencode session，轉發至 opencode
+      if (opencodeBridge?.hasSession(event.user)) {
+        const threadTs = event.thread_ts || event.ts;
+        try {
+          const response = await opencodeBridge.sendPrompt(event.user, event.text);
+          await webClient.chat.postMessage({
+            channel: event.channel,
+            text: response,
+            thread_ts: threadTs,
+          });
+        } catch (error) {
+          logger.error({ error, userId: event.user }, 'opencode sendPrompt failed');
+          await webClient.chat.postMessage({
+            channel: event.channel,
+            text: 'An error occurred while communicating with opencode. Your session has been reset.',
+            thread_ts: threadTs,
+          });
+        }
+        return;
+      }
 
       if (sessionManager) {
         // Copilot 模式：取得 session 並轉發訊息
@@ -125,9 +148,34 @@ export const registerCommandHandlers = (
   socketClient: SocketModeClient,
   _webClient: WebClient,
   modelPreferenceStore?: ModelPreferenceStore,
+  opencodeBridge?: OpencodeBridge,
 ): void => {
   socketClient.on('slash_commands', async ({ ack, body }: any) => {
     try {
+      if (body.command === '/oc') {
+        const prompt = (body.text ?? '').trim();
+
+        // 空白引數
+        if (!prompt) {
+          await ack({ text: '請輸入要傳送給 opencode 的訊息。用法：`/oc <message>`' });
+          return;
+        }
+
+        if (!opencodeBridge) {
+          await ack({ text: 'opencode 整合未啟用。請設定 OPENCODE_BASE_URL 環境變數。' });
+          return;
+        }
+
+        try {
+          const response = await opencodeBridge.sendPrompt(body.user_id, prompt);
+          await ack({ text: response });
+        } catch (error) {
+          logger.error({ error, userId: body.user_id }, '/oc sendPrompt failed');
+          await ack({ text: `無法連線至 opencode 伺服器。請確認伺服器已啟動（\`opencode serve\`）。` });
+        }
+        return;
+      }
+
       if (body.command === '/model') {
         const rawText: string = (body.text ?? '').trim();
 
@@ -201,9 +249,10 @@ export const registerHandlers = (
   copilotTimeoutMs: number = DEFAULT_COPILOT_TIMEOUT_MS,
   copilotTypingIntervalMs: number = 2000,
   modelPreferenceStore?: ModelPreferenceStore,
+  opencodeBridge?: OpencodeBridge,
 ): void => {
-  registerMessageHandlers(socketClient, webClient, sessionManager, copilotTimeoutMs, copilotTypingIntervalMs);
-  registerCommandHandlers(socketClient, webClient, modelPreferenceStore);
+  registerMessageHandlers(socketClient, webClient, sessionManager, copilotTimeoutMs, copilotTypingIntervalMs, opencodeBridge);
+  registerCommandHandlers(socketClient, webClient, modelPreferenceStore, opencodeBridge);
   registerEventHandlers(socketClient, webClient);
 
   logger.info('All handlers registered');

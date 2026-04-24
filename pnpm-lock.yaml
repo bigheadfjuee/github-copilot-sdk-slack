@@ -11,6 +11,9 @@ importers:
       '@github/copilot-sdk':
         specifier: ^0.2.2
         version: 0.2.2
+      '@opencode-ai/sdk':
+        specifier: ^1.14.22
+        version: 1.14.22
       '@slack/bolt':
         specifier: ^3.16.0
         version: 3.22.0
@@ -563,6 +566,9 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@opencode-ai/sdk@1.14.22':
+    resolution: {integrity: sha512-1PjkrZRAwm9ocfTwOleP/e31HYtLVODb2E1hYTRHMmvF2rmAdCm7lztguYVkAPn/B6koGpFvhslTQH7j+38Fjw==}
 
   '@sinclair/typebox@0.27.10':
     resolution: {integrity: sha512-MTBk/3jGLNB2tVxv6uLlFh1iu64iYOQ2PbdOSK3NW8JZsmlaOh2q6sdtKowBhfw8QFLmYNzTW4/oK4uATIi6ZA==}
@@ -3317,6 +3323,10 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@opencode-ai/sdk@1.14.22':
+    dependencies:
+      cross-spawn: 7.0.6
 
   '@sinclair/typebox@0.27.10': {}
 

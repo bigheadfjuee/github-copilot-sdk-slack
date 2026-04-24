@@ -4,9 +4,9 @@ import type { HttpsProxyAgent } from 'https-proxy-agent';
 
 // Use any to avoid v5/v9 generic type differences
 type ProxyAgent = HttpsProxyAgent | undefined;
-import { createLogger } from '../logger';
-import { BotConfig } from '../config';
-import { SlackConnection, ConnectionEvents } from './types';
+import { createLogger } from '../logger.js';
+import { BotConfig } from '../config.js';
+import { SlackConnection, ConnectionEvents } from './types.js';
 
 const logger = createLogger('SocketModeConnection');
 

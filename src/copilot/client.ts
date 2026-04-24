@@ -1,5 +1,5 @@
 import { CopilotClient } from '@github/copilot-sdk';
-import { createLogger } from '../logger';
+import { createLogger } from '../logger.js';
 
 const logger = createLogger('CopilotClientManager');
 

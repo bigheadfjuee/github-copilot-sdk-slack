@@ -1,5 +1,5 @@
 import { WebClient } from '@slack/web-api';
-import { createLogger } from '../logger';
+import { createLogger } from '../logger.js';
 
 const logger = createLogger('ReactionManager');
 

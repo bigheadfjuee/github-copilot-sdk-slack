@@ -1,12 +1,13 @@
 import 'dotenv/config';
-import { loadConfig } from './config';
-import { createLogger } from './logger';
-import { createConnection } from './connections/factory';
-import { SocketModeConnection } from './connections/socket-mode';
-import { registerHandlers } from './handlers';
-import { copilotManager } from './copilot/client';
-import { createSessionManager } from './copilot/session-manager';
-import { ModelPreferenceStore } from './copilot/models';
+import { loadConfig } from './config.js';
+import { createLogger } from './logger.js';
+import { createConnection } from './connections/factory.js';
+import { SocketModeConnection } from './connections/socket-mode.js';
+import { registerHandlers } from './handlers.js';
+import { copilotManager } from './copilot/client.js';
+import { createSessionManager } from './copilot/session-manager.js';
+import { ModelPreferenceStore } from './copilot/models.js';
+import { OpencodeBridge } from './opencode/bridge.js';
 
 const appLogger = createLogger('App');
 
@@ -28,6 +29,9 @@ async function main() {
 
     // 建立 ModelPreferenceStore（全域共用）
     const modelPreferenceStore = new ModelPreferenceStore();
+
+    // 建立 OpencodeBridge（連線至 opencode 伺服器）
+    const opencodeBridge = new OpencodeBridge(config.opencodeBaseUrl, config.opencodeServerPassword);
 
     // 建立 SessionManager（僅在 CopilotClient 成功啟動時）
     const copilotClient = copilotManager.getClient();
@@ -52,7 +56,7 @@ async function main() {
     if (connection instanceof SocketModeConnection) {
       const socketClient = connection.getSocketClient();
       const webClient = connection.getApp(); // 回傳 WebClient
-      registerHandlers(socketClient, webClient, sessionManager, config.copilotTimeoutMs, config.copilotTypingIntervalMs, modelPreferenceStore);
+      registerHandlers(socketClient, webClient, sessionManager, config.copilotTimeoutMs, config.copilotTypingIntervalMs, modelPreferenceStore, opencodeBridge);
     }
 
     // Setup graceful shutdown

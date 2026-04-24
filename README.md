@@ -302,6 +302,40 @@ COPILOT_TIMEOUT_MS=180000         # 預設 180 秒
 - 若已有進行中的 session，需等 session 逾時或重置後新設定才會生效
 - 輸入不認識的別名會收到錯誤訊息，並列出所有支援的別名
 
+### `/oc` — opencode 整合
+
+透過 `/oc` 斜線命令，將訊息傳送至本機運行的 [opencode](https://opencode.ai) 伺服器。每位使用者獨立維護一個 opencode session；建立後，後續在 Slack 發送的訊息會自動路由至 opencode（優先於 Copilot）。
+
+**前提條件：**
+
+1. 在本機或伺服器上啟動 opencode：
+   ```
+   opencode serve
+   ```
+2. 設定環境變數：
+   ```
+   OPENCODE_BASE_URL=http://localhost:4096   # 預設值，可省略
+   OPENCODE_SERVER_PASSWORD=<your-password>  # 若有設定密碼
+   ```
+
+**用法：**
+
+| 指令 | 說明 |
+|------|------|
+| `/oc <message>` | 建立或繼續 opencode session，傳送訊息並回傳結果 |
+
+**範例：**
+
+```
+/oc 幫我寫一個 TypeScript interface 來描述使用者資料
+→ opencode 的回應將直接顯示於 Slack
+```
+
+**注意事項：**
+- Session 保存在記憶體中，應用程式重啟後會清除
+- 建立 session 後，同一使用者的後續訊息會優先路由至 opencode，而非 GitHub Copilot
+- opencode 伺服器必須在 bot 啟動前已運行（`opencode serve`）
+
 ## 🔧 API 參考
 
 ### ConnectionFactory

@@ -1,9 +1,9 @@
 import { App, ExpressReceiver } from '@slack/bolt';
 import express, { Express } from 'express';
-import { createLogger } from '../logger';
-import { BotConfig } from '../config';
-import { SlackConnection, ConnectionEvents } from './types';
-import { createProxyAgents } from '../proxy';
+import { createLogger } from '../logger.js';
+import { BotConfig } from '../config.js';
+import { SlackConnection, ConnectionEvents } from './types.js';
+import { createProxyAgents } from '../proxy.js';
 
 const logger = createLogger('HttpConnection');
 

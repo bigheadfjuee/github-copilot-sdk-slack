@@ -1,7 +1,7 @@
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { ProxyConfig } from './config';
-import { createLogger } from './logger';
+import { ProxyConfig } from './config.js';
+import { createLogger } from './logger.js';
 
 const logger = createLogger('ProxyManager');
 

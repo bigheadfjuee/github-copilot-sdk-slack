@@ -24,6 +24,8 @@ export interface BotConfig {
   sessionIdleMs: number;
   copilotTimeoutMs: number;
   copilotTypingIntervalMs: number;
+  opencodeBaseUrl: string;
+  opencodeServerPassword?: string;
 }
 
 /**
@@ -66,5 +68,7 @@ export const loadConfig = (): BotConfig => {
     sessionIdleMs: parseInt(process.env.COPILOT_SESSION_IDLE_MS || '1800000', 10),
     copilotTimeoutMs: parseInt(process.env.COPILOT_TIMEOUT_MS || '180000', 10),
     copilotTypingIntervalMs: parseInt(process.env.COPILOT_TYPING_INTERVAL_MS || '2000', 10),
+    opencodeBaseUrl: process.env.OPENCODE_BASE_URL || 'http://localhost:4096',
+    opencodeServerPassword: process.env.OPENCODE_SERVER_PASSWORD,
   };
 };

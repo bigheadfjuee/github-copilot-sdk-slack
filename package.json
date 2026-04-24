@@ -2,12 +2,13 @@
   "name": "github-copilot-sdk-slack",
   "version": "1.0.0",
   "description": "TypeScript Slack Bot with Socket Mode and HTTP Proxy support",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest",
+    "test": "jest --config jest.config.cjs",
     "lint": "eslint src/**/*.ts"
   },
   "keywords": [
@@ -21,6 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "@github/copilot-sdk": "^0.2.2",
+    "@opencode-ai/sdk": "^1.14.22",
     "@slack/bolt": "^3.16.0",
     "@slack/socket-mode": "^2.0.6",
     "@slack/web-api": "^6.9.0",

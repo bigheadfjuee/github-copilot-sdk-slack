@@ -2,12 +2,12 @@
  * Connection factory to create the appropriate connection adapter
  */
 
-import { BotConfig } from '../config';
-import { SlackConnection, ConnectionEvents } from './types';
-import { SocketModeConnection } from './socket-mode';
-import { HttpConnection } from './http';
-import { createProxyAgent } from '../proxy';
-import { createLogger } from '../logger';
+import { BotConfig } from '../config.js';
+import { SlackConnection, ConnectionEvents } from './types.js';
+import { SocketModeConnection } from './socket-mode.js';
+import { HttpConnection } from './http.js';
+import { createProxyAgent } from '../proxy.js';
+import { createLogger } from '../logger.js';
 
 const logger = createLogger('ConnectionFactory');
 
@@ -34,6 +34,6 @@ export const createConnection = (
   throw new Error(`Unknown connection mode: ${config.mode}`);
 };
 
-export { SlackConnection, ConnectionEvents } from './types';
-export { SocketModeConnection } from './socket-mode';
-export { HttpConnection } from './http';
+export { SlackConnection, ConnectionEvents } from './types.js';
+export { SocketModeConnection } from './socket-mode.js';
+export { HttpConnection } from './http.js';

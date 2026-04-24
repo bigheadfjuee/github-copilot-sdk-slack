@@ -1,4 +1,4 @@
-import { loadConfig, BotConfig } from '../config';
+import { loadConfig, BotConfig } from '../config.js';
 
 describe('Config', () => {
   const originalEnv = process.env;
