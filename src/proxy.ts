@@ -1,5 +1,9 @@
-import { HttpProxyAgent } from 'http-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import HttpProxyAgentPkg from 'http-proxy-agent';
+import HttpsProxyAgentPkg from 'https-proxy-agent';
+
+// CJS 模組在 NodeNext ESM 下只有 default 匯出，需手動取出建構函式
+const { HttpProxyAgent } = HttpProxyAgentPkg as any;
+const { HttpsProxyAgent } = HttpsProxyAgentPkg as any;
 import { ProxyConfig } from './config.js';
 import { createLogger } from './logger.js';
 
@@ -9,7 +13,7 @@ const logger = createLogger('ProxyManager');
  * Creates a single HttpsProxyAgent for Socket Mode and Web API use.
  * Unified proxy agent using HttpsProxyAgent.
  */
-export const createProxyAgent = (proxyConfig?: ProxyConfig): HttpsProxyAgent | undefined => {
+export const createProxyAgent = (proxyConfig?: ProxyConfig): any | undefined => {
   if (!proxyConfig?.url) {
     return undefined;
   }

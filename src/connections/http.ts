@@ -1,4 +1,5 @@
-import { App, ExpressReceiver } from '@slack/bolt';
+import boltPkg from '@slack/bolt';
+const { App, ExpressReceiver } = boltPkg as any;
 import express, { Express } from 'express';
 import { createLogger } from '../logger.js';
 import { BotConfig } from '../config.js';
@@ -12,9 +13,9 @@ const logger = createLogger('HttpConnection');
  * Uses HTTP webhooks for event delivery from Slack
  */
 export class HttpConnection implements SlackConnection {
-  private app: App;
+  private app: any;
   private expressApp: Express;
-  private receiver: ExpressReceiver;
+  private receiver: any;
   private server: any = null;
   private isRunning: boolean = false;
   private config: BotConfig;
@@ -54,7 +55,7 @@ export class HttpConnection implements SlackConnection {
     });
 
     // Setup health check endpoint
-    this.expressApp.get('/health', (req, res) => {
+      this.expressApp.get('/health', (_req: express.Request, res: express.Response) => {
       res.json({
         status: 'ok',
         mode: 'http',
@@ -69,7 +70,7 @@ export class HttpConnection implements SlackConnection {
    * Setup error handling for the HTTP connection
    */
   private setupErrorHandling(): void {
-    this.app.error(async (error) => {
+    this.app.error(async (error: any) => {
       logger.error({ error }, 'Slack app error');
       if (this.events.onError) {
         await this.events.onError(error as Error);
@@ -80,9 +81,9 @@ export class HttpConnection implements SlackConnection {
     this.expressApp.use(
       (
         error: any,
-        req: express.Request,
+        _req: express.Request,
         res: express.Response,
-        next: express.NextFunction
+        _next: express.NextFunction
       ) => {
         logger.error({ error }, 'Express middleware error');
         res.status(500).json({ error: 'Internal server error' });
@@ -108,9 +109,12 @@ export class HttpConnection implements SlackConnection {
         );
 
         if (this.events.onStart) {
-          this.events.onStart().catch((err) => {
-            logger.error({ error: err }, 'Error in onStart handler');
-          });
+          const result = this.events.onStart();
+          if (result && typeof (result as any).catch === 'function') {
+            (result as Promise<void>).catch((err: any) => {
+              logger.error({ error: err }, 'Error in onStart handler');
+            });
+          }
         }
       });
     } catch (error) {
@@ -153,7 +157,7 @@ export class HttpConnection implements SlackConnection {
   /**
    * Get the underlying Bolt app instance
    */
-  getApp(): App {
+  getApp(): any {
     return this.app;
   }
 

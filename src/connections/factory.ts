@@ -34,6 +34,6 @@ export const createConnection = (
   throw new Error(`Unknown connection mode: ${config.mode}`);
 };
 
-export { SlackConnection, ConnectionEvents } from './types.js';
+export type { SlackConnection, ConnectionEvents } from './types.js';
 export { SocketModeConnection } from './socket-mode.js';
 export { HttpConnection } from './http.js';
