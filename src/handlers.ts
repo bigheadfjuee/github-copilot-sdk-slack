@@ -4,6 +4,7 @@ import { createLogger } from './logger';
 import { SessionManager } from './copilot/session-manager';
 import { TypingIndicator } from './slack/typing-indicator';
 import { ReactionManager } from './slack/reaction-manager';
+import { ModelPreferenceStore, MODEL_ALIASES, resolveModel } from './copilot/models';
 
 const logger = createLogger('BotHandlers');
 
@@ -120,11 +121,48 @@ export const registerMessageHandlers = (
  * Registers slash command handlers.
  * Note: SocketModeClient 2.x uses 'slash_commands' event.
  */
-export const registerCommandHandlers = (socketClient: SocketModeClient, _webClient: WebClient): void => {
+export const registerCommandHandlers = (
+  socketClient: SocketModeClient,
+  _webClient: WebClient,
+  modelPreferenceStore?: ModelPreferenceStore,
+): void => {
   socketClient.on('slash_commands', async ({ ack, body }: any) => {
     try {
-      await ack({ text: `You said: ${body.text}` });
+      if (body.command === '/model') {
+        const rawText: string = (body.text ?? '').trim();
 
+        // 空白引數
+        if (!rawText) {
+          await ack({
+            text: `請指定模型別名。支援的別名：\`${Object.keys(MODEL_ALIASES).join('`, `')}\`\n用法：\`/model <alias>\``,
+          });
+          return;
+        }
+
+        const alias = rawText.split(/\s+/)[0];
+        const resolvedModelId = resolveModel(alias);
+
+        if (resolvedModelId === undefined) {
+          // 不認識的別名
+          await ack({
+            text: `未知的模型別名：\`${alias}\`。支援的別名：\`${Object.keys(MODEL_ALIASES).join('`, `')}\``,
+          });
+          return;
+        }
+
+        // 儲存使用者偏好
+        modelPreferenceStore?.set(body.user_id, resolvedModelId);
+
+        await ack({
+          text: `已設定模型為 \`${resolvedModelId}\`（別名：\`${alias}\`）。下次對話將使用此模型。`,
+        });
+
+        logger.info({ userId: body.user_id, alias, resolvedModelId }, 'Model preference updated');
+        return;
+      }
+
+      // 其他斜線命令預設回應
+      await ack({ text: `You said: ${body.text}` });
       logger.info({ command: body.command }, 'Received slash command');
     } catch (error) {
       logger.error({ error }, 'Error handling slash command');
@@ -162,9 +200,10 @@ export const registerHandlers = (
   sessionManager: SessionManager | null = null,
   copilotTimeoutMs: number = DEFAULT_COPILOT_TIMEOUT_MS,
   copilotTypingIntervalMs: number = 2000,
+  modelPreferenceStore?: ModelPreferenceStore,
 ): void => {
   registerMessageHandlers(socketClient, webClient, sessionManager, copilotTimeoutMs, copilotTypingIntervalMs);
-  registerCommandHandlers(socketClient, webClient);
+  registerCommandHandlers(socketClient, webClient, modelPreferenceStore);
   registerEventHandlers(socketClient, webClient);
 
   logger.info('All handlers registered');

@@ -277,6 +277,31 @@ COPILOT_SESSION_IDLE_MS=1800000   # 預設 30 分鐘
 COPILOT_TIMEOUT_MS=180000         # 預設 180 秒
 ```
 
+## 🤖 斜線命令
+
+### `/model` — 指定 AI 模型
+
+在開始對話前，可透過 `/model` 斜線命令指定要使用的 AI 模型。設定後，下一次新建 Copilot session 時即套用選定的模型。
+
+| 指令 | 對應模型 |
+|------|---------|
+| `/model sonnet` | `claude-sonnet-4.6` |
+| `/model haiku` | `claude-haiku-4.5` |
+| `/model opus` | `claude-opus-4.6` |
+| `/model gpt-5` | `gpt-5.4` |
+
+**範例：**
+
+```
+/model sonnet
+→ 已設定模型為 `claude-sonnet-4.6`（別名：`sonnet`）。下次對話將使用此模型。
+```
+
+**注意事項：**
+- 設定僅保存在記憶體中，應用程式重啟後恢復預設
+- 若已有進行中的 session，需等 session 逾時或重置後新設定才會生效
+- 輸入不認識的別名會收到錯誤訊息，並列出所有支援的別名
+
 ## 🔧 API 參考
 
 ### ConnectionFactory

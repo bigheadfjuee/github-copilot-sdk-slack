@@ -6,6 +6,7 @@ import { SocketModeConnection } from './connections/socket-mode';
 import { registerHandlers } from './handlers';
 import { copilotManager } from './copilot/client';
 import { createSessionManager } from './copilot/session-manager';
+import { ModelPreferenceStore } from './copilot/models';
 
 const appLogger = createLogger('App');
 
@@ -25,10 +26,13 @@ async function main() {
       appLogger.warn('GITHUB_TOKEN not set — running in echo mode');
     }
 
+    // 建立 ModelPreferenceStore（全域共用）
+    const modelPreferenceStore = new ModelPreferenceStore();
+
     // 建立 SessionManager（僅在 CopilotClient 成功啟動時）
     const copilotClient = copilotManager.getClient();
     const sessionManager = copilotClient
-      ? createSessionManager(copilotClient, config.sessionIdleMs)
+      ? createSessionManager(copilotClient, config.sessionIdleMs, modelPreferenceStore)
       : null;
 
     // Create connection based on mode
@@ -48,7 +52,7 @@ async function main() {
     if (connection instanceof SocketModeConnection) {
       const socketClient = connection.getSocketClient();
       const webClient = connection.getApp(); // 回傳 WebClient
-      registerHandlers(socketClient, webClient, sessionManager, config.copilotTimeoutMs, config.copilotTypingIntervalMs);
+      registerHandlers(socketClient, webClient, sessionManager, config.copilotTimeoutMs, config.copilotTypingIntervalMs, modelPreferenceStore);
     }
 
     // Setup graceful shutdown

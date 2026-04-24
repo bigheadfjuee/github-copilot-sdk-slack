@@ -1,5 +1,6 @@
 import { CopilotClient, CopilotSession, approveAll } from '@github/copilot-sdk';
 import { createLogger } from '../logger';
+import { ModelPreferenceStore } from './models';
 
 const logger = createLogger('SessionManager');
 
@@ -17,6 +18,7 @@ export class SessionManager {
   constructor(
     private readonly client: CopilotClient,
     private readonly idleTimeoutMs: number,
+    private readonly modelPreferenceStore?: ModelPreferenceStore,
   ) {}
 
   /**
@@ -30,7 +32,11 @@ export class SessionManager {
     }
 
     logger.info({ userId }, 'Creating new Copilot session');
-    const session = await this.client.createSession({ onPermissionRequest: approveAll });
+    const model = this.modelPreferenceStore?.get(userId);
+    const session = await this.client.createSession({
+      onPermissionRequest: approveAll,
+      ...(model !== undefined ? { model } : {}),
+    });
     this.sessions.set(userId, { session, timer: null });
     return session;
   }
@@ -79,6 +85,10 @@ export class SessionManager {
 /**
  * 建立 SessionManager 的工廠函式
  */
-export function createSessionManager(client: CopilotClient, idleTimeoutMs: number): SessionManager {
-  return new SessionManager(client, idleTimeoutMs);
+export function createSessionManager(
+  client: CopilotClient,
+  idleTimeoutMs: number,
+  modelPreferenceStore?: ModelPreferenceStore,
+): SessionManager {
+  return new SessionManager(client, idleTimeoutMs, modelPreferenceStore);
 }
