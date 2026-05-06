@@ -6,10 +6,17 @@ import { TypingIndicator } from './slack/typing-indicator.js';
 import { ReactionManager } from './slack/reaction-manager.js';
 import { ModelPreferenceStore, MODEL_ALIASES, resolveModel } from './copilot/models.js';
 import { OpencodeBridge } from './opencode/bridge.js';
+import { withRetry, CircuitBreaker } from './utils/retry.js';
 
 const logger = createLogger('BotHandlers');
 
 const DEFAULT_COPILOT_TIMEOUT_MS = 180_000;
+
+// 為 Copilot 通訊建立斷路器（防止級聯故障）
+const copilotCircuitBreaker = new CircuitBreaker(
+  5, // 失敗 5 次後打開斷路器
+  60000 // 1 分鐘後嘗試恢復
+);
 
 /**
  * Registers message event handlers.
@@ -87,10 +94,20 @@ export const registerMessageHandlers = (
         );
 
         try {
-          const reply = await Promise.race([
-            session.sendAndWait({ prompt: event.text }),
-            timeoutPromise,
-          ]);
+          const reply = await copilotCircuitBreaker.execute(() =>
+            withRetry(
+              () =>
+                Promise.race([
+                  session.sendAndWait({ prompt: event.text }),
+                  timeoutPromise,
+                ]),
+              {
+                maxAttempts: 2, // 只重試 1 次（共 2 次嘗試），因為 Copilot 操作可能很慢
+                initialDelayMs: 500,
+                maxDelayMs: 1000,
+              }
+            )
+          );
 
           // 停止動畫，標記成功
           indicator.stop();
@@ -109,7 +126,12 @@ export const registerMessageHandlers = (
           indicator.stop();
           await reactions.markFailure();
 
-          if (error?.message === 'timeout') {
+          // 改進的錯誤處理：捕捉實際錯誤詳情
+          const errorMessage = error?.message ?? String(error);
+          const errorName = error?.name ?? 'UnknownError';
+          const errorStack = error?.stack ?? '';
+
+          if (errorMessage === 'timeout') {
             logger.warn({ userId: event.user }, 'Copilot sendAndWait timed out');
             await webClient.chat.postMessage({
               channel: event.channel,
@@ -117,13 +139,55 @@ export const registerMessageHandlers = (
               thread_ts: event.thread_ts || event.ts,
             });
             await sessionManager.resetSession(event.user);
-          } else {
-            logger.error({ error, userId: event.user }, 'Error forwarding message to Copilot');
+          } else if (errorMessage.includes('Circuit breaker is open')) {
+            // 斷路器打開：服務暫時不可用
+            logger.warn(
+              { userId: event.user, circuitBreakerState: copilotCircuitBreaker.getState() },
+              'Copilot service temporarily unavailable (circuit breaker open)'
+            );
             await webClient.chat.postMessage({
               channel: event.channel,
-              text: 'An error occurred while processing your message.',
+              text: 'Copilot service is temporarily unavailable. Please try again in a moment.',
               thread_ts: event.thread_ts || event.ts,
             });
+          } else {
+            // 記錄詳細的錯誤信息，包括名稱、訊息、堆棧跟蹤和原始錯誤對象
+            logger.error(
+              {
+                userId: event.user,
+                errorName,
+                errorMessage,
+                errorStack: errorStack.split('\n').slice(0, 3), // 只記錄前3行堆棧跟蹤
+                circuitBreakerState: copilotCircuitBreaker.getState(),
+                fullError: JSON.stringify(error, null, 2),
+              },
+              'Error forwarding message to Copilot'
+            );
+
+            // 根據錯誤類型提供更具體的用戶訊息
+            let userMessage = 'An error occurred while processing your message.';
+            if (errorName.includes('Permission') || errorMessage.includes('permission')) {
+              userMessage = 'Permission denied. Please check your Copilot access.';
+            } else if (errorName.includes('Network') || errorMessage.includes('network')) {
+              userMessage = 'Network error. Please check your connection and try again.';
+            } else if (errorName.includes('Invalid') || errorMessage.includes('invalid')) {
+              userMessage = 'Invalid request. Please try rephrasing your message.';
+            }
+
+            await webClient.chat.postMessage({
+              channel: event.channel,
+              text: userMessage,
+              thread_ts: event.thread_ts || event.ts,
+            });
+
+            // 在某些錯誤情況下重置 session
+            if (
+              errorName.includes('Session') ||
+              errorName.includes('Disconnect') ||
+              errorMessage.includes('disconnected')
+            ) {
+              await sessionManager.resetSession(event.user);
+            }
           }
         }
       } else {
