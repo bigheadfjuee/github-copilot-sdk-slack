@@ -1,6 +1,7 @@
 import { CopilotClient, CopilotSession, approveAll } from '@github/copilot-sdk';
 import { createLogger } from '../logger.js';
 import { ModelPreferenceStore } from './models.js';
+import { WorkspaceStore } from './workspace.js';
 
 const logger = createLogger('SessionManager');
 
@@ -19,6 +20,7 @@ export class SessionManager {
     private readonly client: CopilotClient,
     private readonly idleTimeoutMs: number,
     private readonly modelPreferenceStore?: ModelPreferenceStore,
+    private readonly workspaceStore?: WorkspaceStore,
   ) {}
 
   /**
@@ -33,10 +35,13 @@ export class SessionManager {
 
     logger.info({ userId }, 'Creating new Copilot session');
     const model = this.modelPreferenceStore?.get(userId);
+    const workingDirectory = this.workspaceStore?.get(userId);
     const session = await this.client.createSession({
       onPermissionRequest: approveAll,
       ...(model !== undefined ? { model } : {}),
+      ...(workingDirectory !== undefined ? { workingDirectory } : {}),
     });
+    logger.info({ userId, workingDirectory: workingDirectory ?? '(default)' }, 'Copilot session created');
     this.sessions.set(userId, { session, timer: null });
     return session;
   }
@@ -89,6 +94,7 @@ export function createSessionManager(
   client: CopilotClient,
   idleTimeoutMs: number,
   modelPreferenceStore?: ModelPreferenceStore,
+  workspaceStore?: WorkspaceStore,
 ): SessionManager {
-  return new SessionManager(client, idleTimeoutMs, modelPreferenceStore);
+  return new SessionManager(client, idleTimeoutMs, modelPreferenceStore, workspaceStore);
 }

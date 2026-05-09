@@ -26,6 +26,7 @@ export interface BotConfig {
   copilotTypingIntervalMs: number;
   opencodeBaseUrl: string;
   opencodeServerPassword?: string;
+  copilotWorkingDirectory?: string;
 }
 
 /**
@@ -70,5 +71,6 @@ export const loadConfig = (): BotConfig => {
     copilotTypingIntervalMs: parseInt(process.env.COPILOT_TYPING_INTERVAL_MS || '2000', 10),
     opencodeBaseUrl: process.env.OPENCODE_BASE_URL || 'http://localhost:4096',
     opencodeServerPassword: process.env.OPENCODE_SERVER_PASSWORD,
+    copilotWorkingDirectory: process.env.COPILOT_WORKING_DIRECTORY,
   };
 };

@@ -6,6 +6,7 @@ import { TypingIndicator } from './slack/typing-indicator.js';
 import { ReactionManager } from './slack/reaction-manager.js';
 import { ModelPreferenceStore, MODEL_ALIASES, resolveModel } from './copilot/models.js';
 import { OpencodeBridge } from './opencode/bridge.js';
+import { WorkspaceStore } from './copilot/workspace.js';
 import { withRetry, CircuitBreaker } from './utils/retry.js';
 
 const logger = createLogger('BotHandlers');
@@ -213,9 +214,41 @@ export const registerCommandHandlers = (
   _webClient: WebClient,
   modelPreferenceStore?: ModelPreferenceStore,
   opencodeBridge?: OpencodeBridge,
+  workspaceStore?: WorkspaceStore,
+  sessionManager?: SessionManager | null,
 ): void => {
   socketClient.on('slash_commands', async ({ ack, body }: any) => {
     try {
+      if (body.command === '/cwd') {
+        const dir = (body.text ?? '').trim();
+
+        if (!dir) {
+          const current = workspaceStore?.get(body.user_id) ?? '(default: process.cwd())';
+          await ack({ text: `目前的工作目錄：\`${current}\`\n用法：\`/cwd <directory_path>\` 設定工作目錄\n\`/cwd reset\` 清除設定` });
+          return;
+        }
+
+        if (dir === 'reset') {
+          workspaceStore?.clear(body.user_id);
+          // 重置 session 以套用新的工作目錄
+          if (sessionManager) {
+            await sessionManager.resetSession(body.user_id);
+          }
+          await ack({ text: '已清除工作目錄設定，下次對話將使用預設目錄。' });
+          logger.info({ userId: body.user_id }, 'Working directory preference cleared');
+          return;
+        }
+
+        workspaceStore?.set(body.user_id, dir);
+        // 重置 session 以套用新的工作目錄
+        if (sessionManager) {
+          await sessionManager.resetSession(body.user_id);
+        }
+        await ack({ text: `已設定工作目錄為 \`${dir}\`。下次對話將使用此目錄。` });
+        logger.info({ userId: body.user_id, workingDirectory: dir }, 'Working directory preference updated');
+        return;
+      }
+
       if (body.command === '/oc') {
         const prompt = (body.text ?? '').trim();
 
@@ -314,9 +347,10 @@ export const registerHandlers = (
   copilotTypingIntervalMs: number = 2000,
   modelPreferenceStore?: ModelPreferenceStore,
   opencodeBridge?: OpencodeBridge,
+  workspaceStore?: WorkspaceStore,
 ): void => {
   registerMessageHandlers(socketClient, webClient, sessionManager, copilotTimeoutMs, copilotTypingIntervalMs, opencodeBridge);
-  registerCommandHandlers(socketClient, webClient, modelPreferenceStore, opencodeBridge);
+  registerCommandHandlers(socketClient, webClient, modelPreferenceStore, opencodeBridge, workspaceStore, sessionManager);
   registerEventHandlers(socketClient, webClient);
 
   logger.info('All handlers registered');

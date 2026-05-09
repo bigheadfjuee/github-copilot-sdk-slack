@@ -7,6 +7,7 @@ import { registerHandlers } from './handlers.js';
 import { copilotManager } from './copilot/client.js';
 import { createSessionManager } from './copilot/session-manager.js';
 import { ModelPreferenceStore } from './copilot/models.js';
+import { WorkspaceStore } from './copilot/workspace.js';
 import { OpencodeBridge } from './opencode/bridge.js';
 
 const appLogger = createLogger('App');
@@ -30,13 +31,19 @@ async function main() {
     // 建立 ModelPreferenceStore（全域共用）
     const modelPreferenceStore = new ModelPreferenceStore();
 
+    // 建立 WorkspaceStore（全域共用，帶有預設工作目錄）
+    const workspaceStore = new WorkspaceStore(config.copilotWorkingDirectory);
+    if (config.copilotWorkingDirectory) {
+      appLogger.info({ workingDirectory: config.copilotWorkingDirectory }, 'Default Copilot working directory configured');
+    }
+
     // 建立 OpencodeBridge（連線至 opencode 伺服器）
     const opencodeBridge = new OpencodeBridge(config.opencodeBaseUrl, config.opencodeServerPassword);
 
     // 建立 SessionManager（僅在 CopilotClient 成功啟動時）
     const copilotClient = copilotManager.getClient();
     const sessionManager = copilotClient
-      ? createSessionManager(copilotClient, config.sessionIdleMs, modelPreferenceStore)
+      ? createSessionManager(copilotClient, config.sessionIdleMs, modelPreferenceStore, workspaceStore)
       : null;
 
     // Create connection based on mode
@@ -56,7 +63,7 @@ async function main() {
     if (connection instanceof SocketModeConnection) {
       const socketClient = connection.getSocketClient();
       const webClient = connection.getApp(); // 回傳 WebClient
-      registerHandlers(socketClient, webClient, sessionManager, config.copilotTimeoutMs, config.copilotTypingIntervalMs, modelPreferenceStore, opencodeBridge);
+      registerHandlers(socketClient, webClient, sessionManager, config.copilotTimeoutMs, config.copilotTypingIntervalMs, modelPreferenceStore, opencodeBridge, workspaceStore);
     }
 
     // Setup graceful shutdown
